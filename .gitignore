@@ -1,0 +1,41 @@
+# --- Python 运行产物 ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+# --- 环境与虚拟环境 ---
+.env
+.venv/
+venv/
+env/
+# --- 运行时数据 ---
+data/
+# --- 本地持久化存储 ---
+*.sqlite
+*.sqlite3
+chroma/
+.chroma/
+# --- 测试产物 ---
+.pytest_cache/
+.coverage
+htmlcov/
+*.coverage
+coverage.xml
+# --- 类型检查 ---
+.mypy_cache/
+.ruff_cache/
+# --- 构建产物 ---
+*.egg-info/
+*.egg
+dist/
+build/
+# --- IDE 目录 ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# --- 操作系统文件 ---
+Thumbs.db
+.DS_Store
