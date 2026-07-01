@@ -26,7 +26,7 @@ class ModelAdapter:
         s = get_settings()
         return ChatOpenAI(
             model=s.LLM_DEEPSEEK_MODEL,
-            api_key=s.LLM_DEEPSEEK_API_KEY,  # type: ignore[arg-type]
+            api_key=s.LLM_DEEPSEEK_API_KEY,  
             base_url=s.LLM_DEEPSEEK_BASE_URL,
             timeout=s.MODEL_REQUEST_TIMEOUT_S,
             max_retries=0,
@@ -36,7 +36,7 @@ class ModelAdapter:
         s = get_settings()
         return ChatOpenAI(
             model=s.LLM_DOUBAO_MODEL,
-            api_key=s.LLM_DOUBAO_API_KEY,  # type: ignore[arg-type]
+            api_key=s.LLM_DOUBAO_API_KEY,  
             base_url=s.LLM_DOUBAO_BASE_URL,
             timeout=s.MODEL_REQUEST_TIMEOUT_S,
             max_retries=0,

@@ -33,8 +33,8 @@ def build_agent_graph(
             obs.setdefault("errors", []).append({"code": "E0307", "detail": "No messages"})
             return {"next_action": "end_conversation", "observability": obs}
         last = messages[-1]
-        raw_content = last.content if hasattr(last, "content") else str(last)
-        content = raw_content if isinstance(raw_content, str) else str(raw_content)
+        rc = last.content if hasattr(last, "content") else str(last)
+        content = rc if isinstance(rc, str) else str(rc)
         if not content.strip():
             return {"next_action": "end_conversation"}
         elapsed = int((time.monotonic() - start) * 1000)
@@ -69,23 +69,21 @@ def build_agent_graph(
     def _tool_dispatch_node(state: AgentState) -> dict[str, Any]:
         start = time.monotonic()
         logger.info("[tool_dispatch] Entering node")
-        selected = state.get("selected_tools", [])
-        tool_calls: list[dict[str, Any]] = [{"tool": t, "params": {}, "status": "pending"} for t in selected]
+        tcs = [{"tool": t, "params": {}, "status": "pending"} for t in state.get("selected_tools", [])]
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
         obs.setdefault("node_timings", {})["tool_dispatch"] = elapsed
-        return {"tool_calls": tool_calls, "observability": obs}
+        return {"tool_calls": tcs, "observability": obs}
 
     async def _tool_execute_node(state: AgentState) -> dict[str, Any]:
         start = time.monotonic()
         logger.info("[tool_execute] Entering node")
-        tool_calls = state.get("tool_calls", [])
         results: dict[str, str] = {}
-        for tc in tool_calls:
-            tool_name = tc.get("tool", "")
-            func = tool_registry.get_func(tool_name)
+        for tc in state.get("tool_calls", []):
+            tn = tc.get("tool", "")
+            func = tool_registry.get_func(tn)
             if func is None:
-                results[tool_name] = f"工具 '{tool_name}' 未注册"
+                results[tn] = f"工具 '{tn}' 未注册"
                 continue
             try:
                 maybe_coro = func(**tc.get("params", {}))
@@ -93,11 +91,11 @@ def build_agent_graph(
                     tool_output: str = await maybe_coro
                 else:
                     tool_output = str(maybe_coro)
-                results[tool_name] = tool_output
-                logger.info("[tool_execute] %s succeeded", tool_name)
+                results[tn] = tool_output
+                logger.info("[tool_execute] %s succeeded", tn)
             except Exception as e:
-                logger.warning("[tool_execute] %s failed: %s", tool_name, e)
-                results[tool_name] = f"工具 '{tool_name}' 执行错误: {e}"
+                logger.warning("[tool_execute] %s failed: %s", tn, e)
+                results[tn] = f"工具 '{tn}' 执行错误: {e}"
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
         obs.setdefault("node_timings", {})["tool_execute"] = elapsed
@@ -106,9 +104,9 @@ def build_agent_graph(
     def _result_integration_node(state: AgentState) -> dict[str, Any]:
         start = time.monotonic()
         logger.info("[result_integration] Entering node")
-        tool_results = state.get("tool_results", {})
+        tr = state.get("tool_results", {})
         rc = state.get("reflection_count", 0)
-        errors = [k for k, v in tool_results.items() if "错误" in v or "未注册" in v]
+        errors = [k for k, v in tr.items() if "错误" in v or "未注册" in v]
         needs = len(errors) > 0 and rc < Constants.MAX_REFLECTION_ROUNDS
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
@@ -144,7 +142,7 @@ def build_agent_graph(
         return "reflect" if state.get("needs_reflection", False) else "complete"
 
     workflow = StateGraph(AgentState)
-    for name, fn in [
+    for n, f in [
         ("preprocess", _preprocess_node),
         ("router", _router_node),
         ("direct_reply", _direct_reply_node),
@@ -153,7 +151,7 @@ def build_agent_graph(
         ("result_integration", _result_integration_node),
         ("memory_update", _memory_update_node),
     ]:
-        workflow.add_node(name, fn)
+        workflow.add_node(n, f)
     workflow.add_edge(START, "preprocess")
     workflow.add_conditional_edges(
         "preprocess", _should_continue, {"end": END, "tools": "tool_dispatch", "direct_reply": "router"}
@@ -190,7 +188,25 @@ def main() -> None:
 
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    print("Multi-Tool Agent CLI v0.1.0-skeleton")
+    from core.tool_registry import get_tool_registry
+    from tools import web_search
+
+    reg = get_tool_registry()
+    reg.register(
+        "web_search",
+        "Tavily 联网搜索工具",
+        web_search,  # type: ignore[arg-type]
+        {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "搜索查询词"},
+                "max_results": {"type": "integer", "description": "最大返回结果数"},
+            },
+            "required": ["query"],
+        },
+    )
+    print("Multi-Tool Agent CLI v0.2.0-search")
+    print("输入 'exit' 退出\n")
     agent = get_agent()
     sid = f"cli_{int(time.time())}"
     while True:

@@ -53,3 +53,26 @@ class TestLongTermMemory:
     def test_recall_exception(self, memory: LongTermMemory) -> None:
         memory._chroma.similarity_search.side_effect = Exception("err")
         assert memory.recall_relevant("test") == []
+
+    # --- 覆盖率补齐用例 ---
+
+    def test_store_fact_exception(self, memory: LongTermMemory) -> None:
+        """覆盖 store_fact 持久化异常分支 (lines 33-34)。"""
+        memory._chroma.add_documents.side_effect = RuntimeError("db error")
+        memory.store_fact("s1", "fact")
+
+    def test_delete_session_facts_exception(self, memory: LongTermMemory) -> None:
+        """覆盖 delete_session_facts 删除异常分支 (lines 65-66)。"""
+        memory._chroma.get_or_create_collection.side_effect = RuntimeError("db error")
+        memory.delete_session_facts("s1")
+
+    def test_get_long_term_memory_singleton(self) -> None:
+        """覆盖 get_long_term_memory 单例创建路径 (lines 78-80)。"""
+        import memory.long_term as _ltm
+
+        _ltm._long_term_instance = None
+        mc = MagicMock(spec=ChromaClient)
+        inst = _ltm.get_long_term_memory(mc)
+        assert inst is not None
+        inst2 = _ltm.get_long_term_memory(mc)
+        assert inst is inst2
