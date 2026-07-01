@@ -21,9 +21,13 @@ class ChromaClient:
     @property
     def client(self) -> Any:
         if self._client is None:
-            self._client = chromadb.PersistentClient(
-                path=self._persist_dir, settings=ChromaSettings(anonymized_telemetry=False)
-            )
+            try:
+                self._client = chromadb.PersistentClient(
+                    path=self._persist_dir, settings=ChromaSettings(anonymized_telemetry=False)
+                )
+            except Exception:
+                logger.warning("PersistentClient failed, falling back to in-memory client")
+                self._client = chromadb.Client(settings=ChromaSettings(anonymized_telemetry=False))
         return self._client
 
     @property

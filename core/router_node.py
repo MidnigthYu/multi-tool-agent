@@ -15,10 +15,12 @@ from core.model_adapter import get_model_adapter
 logger = logging.getLogger(__name__)
 ROUTER_PROMPT = (
     "你是一个智能路由判断系统。根据用户输入和历史对话，判断下一步行动。\n"
-    '可选行动:\n1. "direct_reply" - 直接由 LLM 生成回复（闲聊、提问、无需工具时）\n'
-    '2. "tool_dispatch" - 需要调用工具（搜索、文件操作等）\n'
-    '3. "end_conversation" - 对话结束\n\n'
-    "请只输出 JSON 格式: "
+    "路由规则：\n"
+    '1. "direct_reply"：闲聊/问候、自我介绍、主观意见、已有工具结果总结\n'
+    '2. "tool_dispatch"：实时/时效性信息、未知外部知识、事实查询、联网验证\n'
+    '   此时 selected_tools=["web_search"]\n'
+    '3. "end_conversation"：用户明确结束对话\n\n'
+    "请只输出 JSON 格式，reason 不超过20字: "
     '{"action": "direct_reply|tool_dispatch|end_conversation", '
     '"reason": "判断理由", "selected_tools": []}'
 )

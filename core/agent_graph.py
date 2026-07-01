@@ -69,7 +69,16 @@ def build_agent_graph(
     def _tool_dispatch_node(state: AgentState) -> dict[str, Any]:
         start = time.monotonic()
         logger.info("[tool_dispatch] Entering node")
-        tcs = [{"tool": t, "params": {}, "status": "pending"} for t in state.get("selected_tools", [])]
+        user_query = ""
+        for msg in reversed(state.get("messages", [])):
+            content = msg.content if hasattr(msg, "content") else ""
+            if isinstance(content, str) and content.strip():
+                user_query = content.strip()
+                break
+        tcs = []
+        for t in state.get("selected_tools", []):
+            params = {"query": user_query} if t == "web_search" and user_query else {}
+            tcs.append({"tool": t, "params": params, "status": "pending"})
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
         obs.setdefault("node_timings", {})["tool_dispatch"] = elapsed
@@ -88,9 +97,10 @@ def build_agent_graph(
             try:
                 maybe_coro = func(**tc.get("params", {}))
                 if asyncio.iscoroutine(maybe_coro):
-                    tool_output: str = await maybe_coro
+                    raw = await maybe_coro
                 else:
-                    tool_output = str(maybe_coro)
+                    raw = maybe_coro
+                tool_output: str = raw.get("formatted", str(raw)) if isinstance(raw, dict) else str(raw)
                 results[tn] = tool_output
                 logger.info("[tool_execute] %s succeeded", tn)
             except Exception as e:
@@ -106,7 +116,7 @@ def build_agent_graph(
         logger.info("[result_integration] Entering node")
         tr = state.get("tool_results", {})
         rc = state.get("reflection_count", 0)
-        errors = [k for k, v in tr.items() if "错误" in v or "未注册" in v]
+        errors = [k for k, v in tr.items() if isinstance(v, str) and ("错误" in v or "未注册" in v)]
         needs = len(errors) > 0 and rc < Constants.MAX_REFLECTION_ROUNDS
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
@@ -177,8 +187,18 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     if _compiled_agent is None:
         from core.model_adapter import get_model_adapter
         from core.tool_registry import get_tool_registry
+        from tools import SearchInput, search_tool
 
-        _compiled_agent = build_agent_graph(get_model_adapter(), get_tool_registry())
+        reg = get_tool_registry()
+        if "web_search" not in [t["name"] for t in reg.list_tools()]:
+            reg.register(
+                "web_search",
+                "Tavily 联网搜索工具 — 搜索获取实时信息、新闻、百科。适用：需要时效性信息、未知知识、事实查询。",
+                search_tool,
+                SearchInput.model_json_schema(),
+            )
+
+        _compiled_agent = build_agent_graph(get_model_adapter(), reg)
     return _compiled_agent
 
 
@@ -188,23 +208,7 @@ def main() -> None:
 
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    from core.tool_registry import get_tool_registry
-    from tools import web_search
 
-    reg = get_tool_registry()
-    reg.register(
-        "web_search",
-        "Tavily 联网搜索工具",
-        web_search,  # type: ignore[arg-type]
-        {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "搜索查询词"},
-                "max_results": {"type": "integer", "description": "最大返回结果数"},
-            },
-            "required": ["query"],
-        },
-    )
     print("Multi-Tool Agent CLI v0.2.0-search")
     print("输入 'exit' 退出\n")
     agent = get_agent()
