@@ -29,6 +29,10 @@ class ErrorCode(StrEnum):
     E0203 = "E0203"
     E0204 = "E0204"
     E0205 = "E0205"
+    E0206 = "E0206"
+    E0207 = "E0207"
+    E0208 = "E0208"
+    E0209 = "E0209"
     # === 第三类：文件解析失败 (E03xx) ===
     E0301 = "E0301"
     E0302 = "E0302"
@@ -72,6 +76,10 @@ class ErrorCode(StrEnum):
             ErrorCode.E0203: "代码执行超时，请检查代码是否存在死循环",
             ErrorCode.E0204: "工具执行超时，已跳过该步骤",
             ErrorCode.E0205: "工具多次重试失败，已跳过该步骤",
+            ErrorCode.E0206: "沙箱容器启动失败，请检查 Docker 服务状态",
+            ErrorCode.E0207: "高危代码已被拦截，系统调用、网络操作等行为不允许",
+            ErrorCode.E0208: "代码执行崩溃，请检查运行时异常",
+            ErrorCode.E0209: "代码执行输出超过字符上限，已自动截断",
             ErrorCode.E0301: "不支持的文件格式，请上传 PDF/Word/Excel 文件",
             ErrorCode.E0302: "文件过大，请上传小于 50MB 的文件",
             ErrorCode.E0303: "PDF 文件无法解析，请检查文件是否损坏或加密",

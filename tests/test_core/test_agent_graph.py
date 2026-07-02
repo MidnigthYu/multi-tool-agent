@@ -75,7 +75,7 @@ class TestAgentGraph:
         g = build_agent_graph(mock_model_adapter, reg)
         r = await g.ainvoke(state, {"configurable": {"thread_id": "t4"}})
         result_str = r.get("tool_results", {}).get("search", "")
-        assert isinstance(result_str, dict) and result_str.get("status") == "success"
+        assert result_str == "result"
 
     @pytest.mark.asyncio
     async def test_invoke_empty_input(self, mock_model_adapter: MagicMock, mock_tool_registry: MagicMock) -> None:

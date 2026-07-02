@@ -75,8 +75,11 @@ def build_agent_graph(
             if isinstance(content, str) and content.strip():
                 user_query = content.strip()
                 break
+        disabled = state.get("tools_disabled", [])
         tcs = []
         for t in state.get("selected_tools", []):
+            if t in disabled:
+                continue
             params = {"query": user_query} if t == "web_search" and user_query else {}
             tcs.append({"tool": t, "params": params, "status": "pending"})
         elapsed = int((time.monotonic() - start) * 1000)
@@ -116,12 +119,33 @@ def build_agent_graph(
         logger.info("[result_integration] Entering node")
         tr = state.get("tool_results", {})
         rc = state.get("reflection_count", 0)
+        ccf = state.get("consecutive_code_failures", 0)
+        disabled = list(state.get("tools_disabled", []))
         errors = [k for k, v in tr.items() if isinstance(v, str) and ("错误" in v or "未注册" in v)]
+        for k, v in tr.items():
+            if not isinstance(v, str) or k != "code_executor":
+                continue
+            if v.startswith("[CODE_BLOCKED]") or v.startswith("[CODE_DEGRADED]"):
+                pass  # Security block / infra failure: no reflection, no counter
+            elif v.startswith("[CODE_TIMEOUT]") or v.startswith("[CODE_CRASH]"):
+                ccf += 1
+                if ccf >= 3 and "code_executor" not in disabled:
+                    disabled.append("code_executor")
+                    logger.warning("[code_executor] Disabled after %d consecutive failures", ccf)
+                errors.append(k)
+            else:
+                ccf = 0  # Success: reset counter
         needs = len(errors) > 0 and rc < Constants.MAX_REFLECTION_ROUNDS
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
         obs.setdefault("node_timings", {})["result_integration"] = elapsed
-        r: dict[str, Any] = {"needs_reflection": needs, "reflection_count": rc + 1, "observability": obs}
+        r: dict[str, Any] = {
+            "needs_reflection": needs,
+            "reflection_count": rc + 1,
+            "consecutive_code_failures": ccf,
+            "tools_disabled": disabled,
+            "observability": obs,
+        }
         if needs:
             r["next_action"] = "tool_dispatch"
         return r
@@ -187,7 +211,7 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     if _compiled_agent is None:
         from core.model_adapter import get_model_adapter
         from core.tool_registry import get_tool_registry
-        from tools import SearchInput, search_tool
+        from tools import CodeExecutionInput, SearchInput, code_executor, search_tool
 
         reg = get_tool_registry()
         if "web_search" not in [t["name"] for t in reg.list_tools()]:
@@ -196,6 +220,13 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
                 "Tavily 联网搜索工具 — 搜索获取实时信息、新闻、百科。适用：需要时效性信息、未知知识、事实查询。",
                 search_tool,
                 SearchInput.model_json_schema(),
+            )
+        if "code_executor" not in [t["name"] for t in reg.list_tools()]:
+            reg.register(
+                "code_executor",
+                "Python 代码执行工具 — 沙箱容器安全执行 Python 代码。适用：数学运算、数据处理、算法验证。",
+                code_executor,
+                CodeExecutionInput.model_json_schema(),
             )
 
         _compiled_agent = build_agent_graph(get_model_adapter(), reg)

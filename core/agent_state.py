@@ -25,6 +25,7 @@ class AgentState(TypedDict, total=False):
     reflection_count: int
     selected_tools: list[str]
     needs_reflection: bool
+    consecutive_code_failures: int
     observability: Required[dict[str, Any]]
 
 
@@ -42,6 +43,7 @@ def create_initial_state(session_id: str, message: str) -> AgentState:
         "memory_context": {},
         "tool_calls": [],
         "tool_results": {},
+        "consecutive_code_failures": 0,
         "observability": {
             "node_timings": {},
             "errors": [],
@@ -58,6 +60,8 @@ def merge_agent_state(base: AgentState, update: AgentState) -> AgentState:
     merged["messages"] = base.get("messages", []) + update.get("messages", [])
     merged["tool_calls"] = base.get("tool_calls", []) + update.get("tool_calls", [])
     merged["tool_results"] = {**base.get("tool_results", {}), **update.get("tool_results", {})}
+    if "consecutive_code_failures" in update:
+        merged["consecutive_code_failures"] = update["consecutive_code_failures"]
     obs_b = base.get("observability", {})
     obs_u = update.get("observability", {})
     merged["observability"] = {
