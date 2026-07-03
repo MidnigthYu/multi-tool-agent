@@ -31,13 +31,13 @@ pip install pytest pytest-cov ruff mypy pytest-asyncio pytest-mock python-dotenv
 ruff check .
 ruff format .
 
-# 严格类型校验
-mypy --strict core/ config/ storage/ memory/ tools/
+# 严格类型校验（核心业务目录，Windows环境推荐python -m调用）
+python -m mypy --strict core/ config/ storage/ memory/ tools/
 
-# 全量单元测试（当前版本203条用例，0失败标准）
+# 全量单元测试（当前版本306条用例，0失败标准）
 pytest tests/ -q --tb=short
 
-# 覆盖率门禁校验（归档门槛≥90%，当前96.73%）
+# 覆盖率门禁校验（归档门槛≥90%，当前92.47%）
 pytest tests/ -q --cov=core --cov=config --cov=storage --cov=memory --cov=tools --cov-fail-under=90
 ```
 
@@ -54,7 +54,7 @@ config/         全局配置与常量（零依赖）
 storage/        持久化存储封装（ChromaDB + SQLite + 文件系统）
 core/           核心调度层（AgentState + Graph + Router + ToolRegistry + ModelAdapter）
 memory/         三级分层记忆（短期 / 中期 / 长期）
-tools/          工具能力集群（联网搜索 / 代码沙箱 / 文档解析 / 周报生成）
+tools/          工具能力集群（联网搜索 / 代码沙箱 / 文档索引 / 知识库检索）
 api/            FastAPI 后端接口层
 frontend/       Streamlit 可视化前端
 tests/          全量单元测试
@@ -87,7 +87,7 @@ scripts/        运维脚本
 6. 新增40条搜索工具专项单元测试，全项目合计224用例零失败
 7. 全项目mypy/ruff静态质检零报错，覆盖率≥90%归档标准
 
-### v0.4.0-code-sandbox（当前最新版）
+### v0.4.0-code-sandbox
 1. 新增隔离式 Python 代码沙箱 code_executor 工具，AST 语法树高危检测 + Docker 四层容器隔离
 2. 实现 20s 进程软超时 + 30s 容器硬销毁双重熔断，连续 3 次失败会话级自动禁用工具
 3. ReAct 全链路闭环：运行错误回流反思节点，LLM 自主重写代码；高危拦截直接终止不触发重试
@@ -95,3 +95,13 @@ scripts/        运维脚本
 5. 完全兼容现有函数式 ToolRegistry 架构，无新增抽象层，无历史功能破坏
 6. 新增 33 条代码沙箱专项单元测试，全项目合计 257 用例零失败
 7. 全项目 mypy/ruff 静态质检零报错，整体覆盖率 92.44%，满足 ≥90% 归档标准
+
+### v0.5.0-rag（当前最新版）
+1. 新增本地知识库 RAG 双工具：index_documents（文档索引）+ knowledge_search（语义检索）
+2. 支持 PDF/DOCX/XLSX 三类主流文档纯文本提取，统一入口 parse_document 自动分发
+3. 实现段落边界优先 + 固定长度兜底语义分块算法，可配置分片长度与重叠窗口
+4. ChromaStore 业务封装层组合复用现有 ChromaClient 单例，嵌入生成独立调度
+5. 检索支持相似度阈值过滤、结果智能截断、零匹配兜底，完全兼容函数式 ToolRegistry 注册规范
+6. get_agent 幂等自动注册 index_documents + knowledge_search 双工具，LLM 自主判断调用
+7. 新增 49 条 RAG 专项单元测试（解析器 18 + 存储 8 + 检索 16 + 索引 6 + 分块 1），全项目合计 306 用例零失败
+8. 全项目 mypy/ruff 静态质检零报错，整体覆盖率 92.47%，满足 ≥90% 归档标准
