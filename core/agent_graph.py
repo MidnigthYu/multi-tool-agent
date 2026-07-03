@@ -211,7 +211,16 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
     if _compiled_agent is None:
         from core.model_adapter import get_model_adapter
         from core.tool_registry import get_tool_registry
-        from tools import CodeExecutionInput, SearchInput, code_executor, search_tool
+        from tools import (
+            CodeExecutionInput,
+            IndexDocumentsInput,
+            KnowledgeSearchInput,
+            SearchInput,
+            code_executor,
+            index_documents,
+            knowledge_search,
+            search_tool,
+        )
 
         reg = get_tool_registry()
         if "web_search" not in [t["name"] for t in reg.list_tools()]:
@@ -227,6 +236,21 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
                 "Python 代码执行工具 — 沙箱容器安全执行 Python 代码。适用：数学运算、数据处理、算法验证。",
                 code_executor,
                 CodeExecutionInput.model_json_schema(),
+            )
+        if "index_documents" not in [t["name"] for t in reg.list_tools()]:
+            reg.register(
+                "index_documents",
+                "文档索引工具 — 将本地 PDF/Word/Excel 文档解析并索引到知识库。"
+                "适用：用户上传文档后需要建立索引以供检索。",
+                index_documents,
+                IndexDocumentsInput.model_json_schema(),
+            )
+        if "knowledge_search" not in [t["name"] for t in reg.list_tools()]:
+            reg.register(
+                "knowledge_search",
+                "本地知识库检索工具 — 语义搜索已索引的文档内容。适用：需要查询已上传文档中的具体信息、数据、条款。",
+                knowledge_search,
+                KnowledgeSearchInput.model_json_schema(),
             )
 
         _compiled_agent = build_agent_graph(get_model_adapter(), reg)
