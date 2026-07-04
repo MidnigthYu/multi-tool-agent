@@ -80,7 +80,7 @@ class MidTermMemory:
                 __import__("datetime").datetime.now()
                 - __import__("datetime").timedelta(hours=get_settings().SESSION_EXPIRE_HOURS)
             ).isoformat()
-            self._sqlite.conn.execute("DELETE FROM sessions WHERE created_at < ?", (cutoff,))
+            self._sqlite.conn.execute("DELETE FROM sessions WHERE updated_at < ?", (cutoff,))
             self._sqlite.conn.commit()
         except Exception as e:
             logger.warning("MidTerm cleanup_expired failed: %s", e)

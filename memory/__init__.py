@@ -20,6 +20,9 @@ class MemoryManager:
         self._short: ShortTermMemory | None = None
         self._mid: MidTermMemory | None = None
         self._long: LongTermMemory | None = None
+        # 初始化执行一次过期会话清理
+        with __import__("contextlib").suppress(Exception):
+            self._get_mid().cleanup_expired()
 
     def _get_short(self) -> ShortTermMemory:
         if self._short is None:
@@ -72,7 +75,7 @@ class MemoryManager:
         # Layer 2: long-term recall
         if remaining > 0:
             try:
-                long_results = self._get_long().recall_relevant(session_id + " " + current_query)
+                long_results = self._get_long().recall_relevant(current_query)
                 if long_results:
                     facts = "; ".join(r.get("document", "") for r in long_results if r.get("document"))
                     if facts:

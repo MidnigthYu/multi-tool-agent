@@ -19,7 +19,7 @@ def remember_this(fact: str) -> str:
         memory = LongTermMemory(chroma)
         memory.store_fact("tool", fact)
         logger.info("[remember_this] Fact stored: %.60s", fact)
-        return "记忆已保存: {fact[:100]}"
+        return f"记忆已保存: {fact[:100]}"
     except Exception as e:
         logger.error("[remember_this] Failed: %s", e)
         return "记忆保存失败，请稍后重试"
