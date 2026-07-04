@@ -57,6 +57,17 @@ def build_agent_graph(
     async def _direct_reply_node(state: AgentState) -> dict[str, Any]:
         start = time.monotonic()
         logger.info("[direct_reply] Entering node")
+        if memory_manager is not None:
+            try:
+                sid = state.get("session_id", "default")
+                msgs = state.get("messages", [])
+                last = msgs[-1] if msgs else None
+                query = str(last.content) if last and hasattr(last, "content") and isinstance(last.content, str) else ""
+                ctx = memory_manager.build_context(sid, query)
+                if ctx:
+                    state["memory_context"] = {"formatted": ctx}
+            except Exception as e:
+                logger.warning("[direct_reply] Memory context injection failed: %s", e)
         from core.router_node import direct_reply_node as _do_reply
 
         result = await _do_reply(state)
@@ -156,7 +167,19 @@ def build_agent_graph(
         obs = state.get("observability", {})
         if memory_manager is not None:
             try:
-                memory_manager.update(state)
+                messages = state.get("messages", [])
+                sid = state.get("session_id", "default")
+                user_msg = ""
+                assistant_msg = ""
+                for msg in reversed(messages):
+                    content = msg.content if hasattr(msg, "content") else str(msg)
+                    if isinstance(content, str) and content.strip():
+                        if not assistant_msg:
+                            assistant_msg = content
+                        elif not user_msg:
+                            user_msg = content
+                            break
+                memory_manager.update(sid, user_msg, assistant_msg)
                 obs["memory_updated"] = True
             except Exception as e:
                 logger.warning("[memory_update] Failed: %s", e)
@@ -219,6 +242,7 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
             code_executor,
             index_documents,
             knowledge_search,
+            remember_this,
             search_tool,
         )
 
@@ -251,6 +275,17 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
                 "本地知识库检索工具 — 语义搜索已索引的文档内容。适用：需要查询已上传文档中的具体信息、数据、条款。",
                 knowledge_search,
                 KnowledgeSearchInput.model_json_schema(),
+            )
+        if "remember_this" not in [t["name"] for t in reg.list_tools()]:
+            reg.register(
+                "remember_this",
+                "记忆写入工具 — 将重要事实、用户偏好永久保存到长期记忆。适用场景：用户明确告知偏好、重要事实。",
+                remember_this,  # type: ignore[arg-type]
+                {
+                    "type": "object",
+                    "properties": {"fact": {"type": "string", "description": "要记住的事实"}},
+                    "required": ["fact"],
+                },
             )
 
         _compiled_agent = build_agent_graph(get_model_adapter(), reg)

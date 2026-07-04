@@ -73,6 +73,18 @@ class MidTermMemory:
         except json.JSONDecodeError:
             return {"intent": session["summary"][:200], "conclusion": "无", "todos": [], "preferences": []}
 
+    def cleanup_expired(self) -> None:
+        """删除超过 SESSION_EXPIRE_HOURS 的过期会话摘要。"""
+        try:
+            cutoff = (
+                __import__("datetime").datetime.now()
+                - __import__("datetime").timedelta(hours=get_settings().SESSION_EXPIRE_HOURS)
+            ).isoformat()
+            self._sqlite.conn.execute("DELETE FROM sessions WHERE created_at < ?", (cutoff,))
+            self._sqlite.conn.commit()
+        except Exception as e:
+            logger.warning("MidTerm cleanup_expired failed: %s", e)
+
     def get_sessions_in_range(self, start: str, end: str) -> list[dict[str, Any]]:
         sessions: list[dict[str, Any]] = []
         try:

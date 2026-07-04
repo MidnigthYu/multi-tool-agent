@@ -23,7 +23,7 @@ class TestLongTermMemory:
 
     def test_recall(self, memory: LongTermMemory) -> None:
         memory._chroma.similarity_search.return_value = [
-            {"id": "1", "document": "python", "distance": 0.9, "metadata": {}}
+            {"id": "1", "document": "python", "distance": 0.3, "metadata": {}}
         ]
         assert len(memory.recall_relevant("python")) == 1
 
@@ -37,7 +37,7 @@ class TestLongTermMemory:
             {"id": "2", "document": "high", "distance": 0.8, "metadata": {}},
         ]
         r = memory.recall_relevant("test")
-        assert len(r) == 1 and r[0]["id"] == "2"
+        assert len(r) == 1 and r[0]["id"] == "1"
 
     def test_health(self, memory: LongTermMemory) -> None:
         memory._chroma.heartbeat.return_value = True
@@ -49,6 +49,15 @@ class TestLongTermMemory:
         memory._chroma.get_or_create_collection.return_value = mc
         memory.delete_session_facts("s1")
         mc.delete.assert_called_once()
+
+    def test_long_term_distance_filter_direction(self, memory: LongTermMemory) -> None:
+        """确保距离过滤方向为 < threshold（低距离/高相似度被保留）。"""
+        memory._chroma.similarity_search.return_value = [
+            {"id": "high_sim", "document": "python programming", "distance": 0.1, "metadata": {}},
+            {"id": "low_sim", "document": "unrelated", "distance": 0.8, "metadata": {}},
+        ]
+        r = memory.recall_relevant("python")
+        assert len(r) == 1 and r[0]["id"] == "high_sim"
 
     def test_recall_exception(self, memory: LongTermMemory) -> None:
         memory._chroma.similarity_search.side_effect = Exception("err")

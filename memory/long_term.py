@@ -46,7 +46,7 @@ class LongTermMemory:
                 query_texts=[query],
                 n_results=k,
             )
-            filtered = [r for r in results if r.get("distance", 1.0) >= threshold]
+            filtered = [r for r in results if r.get("distance", 1.0) < threshold]
             return filtered
         except Exception as e:
             logger.error("LongTermMemory recall failed: %s", e)

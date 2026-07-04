@@ -57,7 +57,10 @@ async def router_node(state: AgentState) -> dict[str, Any]:
 async def direct_reply_node(state: AgentState) -> dict[str, Any]:
     messages = state.get("messages", [])
     tool_results = state.get("tool_results", {})
+    memory_ctx = state.get("memory_context", {}).get("formatted", "")
     system_content = "你是一个多工具智能助理，请根据上下文友好地回复用户。"
+    if memory_ctx:
+        system_content = memory_ctx + "\n\n" + system_content
     if tool_results:
         system_content += "\n\n以下是工具返回的结果，请基于这些信息回答："
         for tool_name, result_text in tool_results.items():
