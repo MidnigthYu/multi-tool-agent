@@ -31,13 +31,13 @@ pip install pytest pytest-cov ruff mypy pytest-asyncio pytest-mock python-dotenv
 ruff check .
 ruff format .
 
-# 严格类型校验（核心业务目录，Windows环境推荐python -m调用）
-python -m mypy --strict core/ config/ storage/ memory/ tools/
+# 严格类型校验
+mypy --strict core/ config/ storage/ memory/ tools/
 
-# 全量单元测试（当前版本306条用例，0失败标准）
+# 全量单元测试（当前版本307条用例，0失败标准）
 pytest tests/ -q --tb=short
 
-# 覆盖率门禁校验（归档门槛≥90%，当前92.47%）
+# 覆盖率门禁校验（归档门槛≥90%，当前91.66%）
 pytest tests/ -q --cov=core --cov=config --cov=storage --cov=memory --cov=tools --cov-fail-under=90
 ```
 
@@ -54,7 +54,7 @@ config/         全局配置与常量（零依赖）
 storage/        持久化存储封装（ChromaDB + SQLite + 文件系统）
 core/           核心调度层（AgentState + Graph + Router + ToolRegistry + ModelAdapter）
 memory/         三级分层记忆（短期 / 中期 / 长期）
-tools/          工具能力集群（联网搜索 / 代码沙箱 / 文档索引 / 知识库检索）
+tools/          工具能力集群（联网搜索 / 代码沙箱 / RAG双工具 / 主动记忆写入）
 api/            FastAPI 后端接口层
 frontend/       Streamlit 可视化前端
 tests/          全量单元测试
@@ -96,7 +96,7 @@ scripts/        运维脚本
 6. 新增 33 条代码沙箱专项单元测试，全项目合计 257 用例零失败
 7. 全项目 mypy/ruff 静态质检零报错，整体覆盖率 92.44%，满足 ≥90% 归档标准
 
-### v0.6.0-memory（当前最新版）
+### v0.5.0-rag
 1. 新增本地知识库 RAG 双工具：index_documents（文档索引）+ knowledge_search（语义检索）
 2. 支持 PDF/DOCX/XLSX 三类主流文档纯文本提取，统一入口 parse_document 自动分发
 3. 实现段落边界优先 + 固定长度兜底语义分块算法，可配置分片长度与重叠窗口
@@ -105,3 +105,14 @@ scripts/        运维脚本
 6. get_agent 幂等自动注册 index_documents + knowledge_search 双工具，LLM 自主判断调用
 7. 新增 49 条 RAG 专项单元测试（解析器 18 + 存储 8 + 检索 16 + 索引 6 + 分块 1），全项目合计 306 用例零失败
 8. 全项目 mypy/ruff 静态质检零报错，整体覆盖率 92.47%，满足 ≥90% 归档标准
+
+### v0.6.0-memory（当前最新版）
+1. 落地三级分层记忆体系：短期滑动窗口会话记忆、中期LLM摘要持久化、长期向量语义记忆，三层职责解耦
+2. MemoryManager 门面层统一对外入口，内部编排三层记忆读写，与主调度链路低耦合
+3. 新增 remember_this 主动记忆工具，遵循函数式 ToolRegistry 规范，LLM 可自主调用写入长期记忆
+4. 上下文静默注入回复节点，不新增 LangGraph 图节点，最小侵入式接入主链路，无原有功能回归
+5. 修复长期记忆距离过滤方向历史Bug，召回结果按相似度阈值正确筛选
+6. 中期记忆支持 TTL 自动过期清理，MemoryManager 初始化时自动执行全量过期会话清理
+7. 全链路异常兜底：存储层故障自动降级内存模式，所有记忆层异常内部捕获，不透传中断主对话
+8. 补充记忆模块全场景单元测试，覆盖正常读写、边界场景、降级容错、会话隔离
+9. 全项目合计 307 用例零失败，mypy/ruff 静态质检零报错，整体覆盖率 91.66%，满足 ≥90% 归档标准
