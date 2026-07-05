@@ -32,12 +32,12 @@ ruff check .
 ruff format .
 
 # 严格类型校验
-mypy --strict core/ config/ storage/ memory/ tools/
+python -m mypy --strict core/ config/ storage/ memory/ tools/
 
-# 全量单元测试（当前版本307条用例，0失败标准）
+# 全量单元测试（当前版本312条用例，0失败标准）
 pytest tests/ -q --tb=short
 
-# 覆盖率门禁校验（归档门槛≥90%，当前91.66%）
+# 覆盖率门禁校验（归档门槛≥90%，当前91.38%）
 pytest tests/ -q --cov=core --cov=config --cov=storage --cov=memory --cov=tools --cov-fail-under=90
 ```
 
@@ -54,7 +54,7 @@ config/         全局配置与常量（零依赖）
 storage/        持久化存储封装（ChromaDB + SQLite + 文件系统）
 core/           核心调度层（AgentState + Graph + Router + ToolRegistry + ModelAdapter）
 memory/         三级分层记忆（短期 / 中期 / 长期）
-tools/          工具能力集群（联网搜索 / 代码沙箱 / RAG双工具 / 主动记忆写入）
+tools/          工具能力集群（联网搜索 / 代码沙箱 / RAG双工具 / 主动记忆写入 / 结构化周报生成）
 api/            FastAPI 后端接口层
 frontend/       Streamlit 可视化前端
 tests/          全量单元测试
@@ -106,7 +106,7 @@ scripts/        运维脚本
 7. 新增 49 条 RAG 专项单元测试（解析器 18 + 存储 8 + 检索 16 + 索引 6 + 分块 1），全项目合计 306 用例零失败
 8. 全项目 mypy/ruff 静态质检零报错，整体覆盖率 92.47%，满足 ≥90% 归档标准
 
-### v0.6.0-memory（当前最新版）
+### v0.6.0-memory
 1. 落地三级分层记忆体系：短期滑动窗口会话记忆、中期LLM摘要持久化、长期向量语义记忆，三层职责解耦
 2. MemoryManager 门面层统一对外入口，内部编排三层记忆读写，与主调度链路低耦合
 3. 新增 remember_this 主动记忆工具，遵循函数式 ToolRegistry 规范，LLM 可自主调用写入长期记忆
@@ -116,3 +116,14 @@ scripts/        运维脚本
 7. 全链路异常兜底：存储层故障自动降级内存模式，所有记忆层异常内部捕获，不透传中断主对话
 8. 补充记忆模块全场景单元测试，覆盖正常读写、边界场景、降级容错、会话隔离
 9. 全项目合计 307 用例零失败，mypy/ruff 静态质检零报错，整体覆盖率 91.66%，满足 ≥90% 归档标准
+
+### v0.7.0-weekly（当前最新版）
+1. 新增结构化周报生成工具，支持 Markdown / JSON 双格式输出，基于会话记忆自动生成总结
+2. 分层实现：纯代码计算工具调用统计、会话时长等硬指标，LLM 仅负责语义总结，数据准确可追溯
+3. 调度节点从 AgentState 实时注入统计参数，工具层保持无状态，完全兼容函数式 ToolRegistry 架构
+4. get_agent 幂等自动注册，无需手动配置，LLM 可自主识别「生成周报」类意图并调用
+5. 3000 字符超长内容自动截断，避免上下文溢出；空会话、参数非法、LLM 故障四类场景全兜底
+6. 修复调度节点统计数据空注入问题，工具使用统计、会话时长均从状态实时读取
+7. 统一 config 目录子模块导出风格，代码规范与其他模块对齐
+8. 新增 5 条周报工具专项单元测试，覆盖正常生成、空会话降级、异常兜底全场景
+9. 全项目合计 312 用例零失败，mypy/ruff 静态质检零报错，整体覆盖率 91.38%，满足 ≥90% 归档标准

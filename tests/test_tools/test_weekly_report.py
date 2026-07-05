@@ -23,7 +23,8 @@ class TestWeeklyReport:
             adapter.invoke.return_value = (mock_response, {})
             mock_get.return_value = adapter
             result = await generate_weekly_report(
-                session_id="s1", message_count=5,
+                session_id="s1",
+                message_count=5,
                 tool_call_records=[{"tool": "web_search", "status": "success"}],
             )
             assert "# 周报" in result
@@ -44,7 +45,9 @@ class TestWeeklyReport:
             adapter.invoke.return_value = (mock_response, {})
             mock_get.return_value = adapter
             result = await generate_weekly_report(
-                session_id="s1", format="html", message_count=5,
+                session_id="s1",
+                format="html",
+                message_count=5,
             )
             assert isinstance(result, str)
 
@@ -55,7 +58,8 @@ class TestWeeklyReport:
             adapter.invoke.side_effect = RuntimeError("model error")
             mock_get.return_value = adapter
             result = await generate_weekly_report(
-                session_id="s1", message_count=5,
+                session_id="s1",
+                message_count=5,
             )
             assert isinstance(result, str)
             assert "统计降级" in result
@@ -69,6 +73,8 @@ class TestWeeklyReport:
             adapter.invoke.return_value = (mock_response, {})
             mock_get.return_value = adapter
             result = await generate_weekly_report(
-                session_id="s1", message_count=5, session_summary="A" * 4000,
+                session_id="s1",
+                message_count=5,
+                session_summary="A" * 4000,
             )
             assert isinstance(result, str)

@@ -98,8 +98,18 @@ def build_agent_graph(
                     "session_id": state.get("session_id", ""),
                     "format": "markdown",
                     "message_count": len(state.get("messages", [])),
-                    "tool_call_records": [],
-                    "session_duration_minutes": 0.0,
+                    "tool_call_records": [
+                        {
+                            "tool": k,
+                            "status": (
+                                "failed" if isinstance(v, str) and ("错误" in v or "未注册" in v) else "success"
+                            ),
+                        }
+                        for k, v in state.get("tool_results", {}).items()
+                    ],
+                    "session_duration_minutes": round(
+                        max(state.get("observability", {}).get("node_timings", {}).values(), default=0) / 60000, 2
+                    ),
                     "session_summary": state.get("memory_context", {}).get("formatted", ""),
                 }
                 params = p
