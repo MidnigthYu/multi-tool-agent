@@ -89,7 +89,7 @@ class MidTermMemory:
         sessions: list[dict[str, Any]] = []
         try:
             rows = self._sqlite.conn.execute(
-                "SELECT * FROM sessions WHERE created_at >= ? AND created_at <= ? ORDER BY created_at", (start, end)
+                "SELECT * FROM sessions WHERE updated_at >= ? AND updated_at <= ? ORDER BY updated_at", (start, end)
             ).fetchall()
             for row in rows:
                 s: dict[str, Any] = dict(row)

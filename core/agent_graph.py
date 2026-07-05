@@ -91,7 +91,20 @@ def build_agent_graph(
         for t in state.get("selected_tools", []):
             if t in disabled:
                 continue
-            params = {"query": user_query} if t == "web_search" and user_query else {}
+            if t == "web_search" and user_query:
+                params = {"query": user_query}
+            elif t == "weekly_report":
+                p: dict[str, Any] = {
+                    "session_id": state.get("session_id", ""),
+                    "format": "markdown",
+                    "message_count": len(state.get("messages", [])),
+                    "tool_call_records": [],
+                    "session_duration_minutes": 0.0,
+                    "session_summary": state.get("memory_context", {}).get("formatted", ""),
+                }
+                params = p
+            else:
+                params = {}
             tcs.append({"tool": t, "params": params, "status": "pending"})
         elapsed = int((time.monotonic() - start) * 1000)
         obs = state.get("observability", {})
@@ -239,7 +252,9 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
             IndexDocumentsInput,
             KnowledgeSearchInput,
             SearchInput,
+            WeeklyReportInput,
             code_executor,
+            generate_weekly_report,
             index_documents,
             knowledge_search,
             remember_this,
@@ -286,6 +301,13 @@ def get_agent() -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
                     "properties": {"fact": {"type": "string", "description": "要记住的事实"}},
                     "required": ["fact"],
                 },
+            )
+        if "weekly_report" not in [t["name"] for t in reg.list_tools()]:
+            reg.register(
+                "weekly_report",
+                "周报生成工具 — 根据会话数据自动生成结构化周报。适用：对近期对话总结、工具统计、任务跟进。",
+                generate_weekly_report,
+                WeeklyReportInput.model_json_schema(),
             )
 
         _compiled_agent = build_agent_graph(get_model_adapter(), reg)
