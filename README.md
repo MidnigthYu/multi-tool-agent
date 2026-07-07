@@ -46,6 +46,17 @@ pytest tests/ -q --cov=core --cov=config --cov=storage --cov=memory --cov=tools 
 python -m core.agent_graph
 ```
 
+### 5. 启动 Streamlit 前端（v0.8.0+）
+```powershell
+# 首次启动需安装 nest-asyncio 依赖
+pip install nest-asyncio
+
+# 启动双栏可视化前端
+streamlit run frontend/app.py
+```
+启动后浏览器自动打开，左侧边栏管理会话/工具/参数，右侧主面板聊天交互。
+若遇到 PowerShell 执行策略限制，先执行：`Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
+
 ---
 
 ## 目录结构
@@ -56,7 +67,7 @@ core/           核心调度层（AgentState + Graph + Router + ToolRegistry + M
 memory/         三级分层记忆（短期 / 中期 / 长期）
 tools/          工具能力集群（联网搜索 / 代码沙箱 / RAG双工具 / 主动记忆写入 / 结构化周报生成）
 api/            FastAPI 后端接口层
-frontend/       Streamlit 可视化前端
+frontend/       Streamlit 可视化前端（双栏布局 + 会话隔离 + ReAct 可视化）
 tests/          全量单元测试
 data/           运行时数据（不纳入版本控制）
 docker/         容器化部署配置
@@ -117,7 +128,7 @@ scripts/        运维脚本
 8. 补充记忆模块全场景单元测试，覆盖正常读写、边界场景、降级容错、会话隔离
 9. 全项目合计 307 用例零失败，mypy/ruff 静态质检零报错，整体覆盖率 91.66%，满足 ≥90% 归档标准
 
-### v0.7.0-weekly（当前最新版）
+### v0.7.0-weekly
 1. 新增结构化周报生成工具，支持 Markdown / JSON 双格式输出，基于会话记忆自动生成总结
 2. 分层实现：纯代码计算工具调用统计、会话时长等硬指标，LLM 仅负责语义总结，数据准确可追溯
 3. 调度节点从 AgentState 实时注入统计参数，工具层保持无状态，完全兼容函数式 ToolRegistry 架构
@@ -127,3 +138,12 @@ scripts/        运维脚本
 7. 统一 config 目录子模块导出风格，代码规范与其他模块对齐
 8. 新增 5 条周报工具专项单元测试，覆盖正常生成、空会话降级、异常兜底全场景
 9. 全项目合计 312 用例零失败，mypy/ruff 静态质检零报错，整体覆盖率 91.38%，满足 ≥90% 归档标准
+
+### v0.8.0-frontend（当前最新版）
+1. 新增 Streamlit 工业级双栏可视化前端，左侧边栏会话管理 + 工具开关 + 参数配置，右侧主面板聊天 + ReAct 链路可视化
+2. 实现完整会话隔离：`st.session_state` + LangGraph `thread_id` 双层保障，多标签页/多会话数据互不串流
+3. Agent / MemoryManager 使用 `@st.cache_resource` 全局单例缓存，规避重复初始化向量库、LLM、容器沙箱
+4. `agent_runner` 同步封装层捕获全部异步调用异常，返回友好提示，不抛出堆栈破坏页面渲染
+5. stderr 双写日志体系：路由节点 `[router]` + 前端 `[frontend]` 双重终端日志，全链路可追溯
+6. 前端专项冒烟测试覆盖启动导入、会话管理、Agent 调用、异常兜底全场景
+7. 全项目 mypy/ruff 静态质检零告警，core/tools/storage/memory/config/api 零变更，满足架构红线
