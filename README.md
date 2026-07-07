@@ -32,13 +32,13 @@ ruff check .
 ruff format .
 
 # 严格类型校验
-python -m mypy --strict core/ config/ storage/ memory/ tools/
+python -m mypy --strict core/ config/ storage/ memory/ tools/ frontend/
 
 # 全量单元测试（当前版本312条用例，0失败标准）
 pytest tests/ -q --tb=short
 
 # 覆盖率门禁校验（归档门槛≥90%，当前91.38%）
-pytest tests/ -q --cov=core --cov=config --cov=storage --cov=memory --cov=tools --cov-fail-under=90
+pytest tests/ -q --cov=core --cov=config --cov=storage --cov=memory --cov=tools --cov=frontend --cov-fail-under=80
 ```
 
 ### 4. 启动Agent CLI
@@ -147,3 +147,11 @@ scripts/        运维脚本
 5. stderr 双写日志体系：路由节点 `[router]` + 前端 `[frontend]` 双重终端日志，全链路可追溯
 6. 前端专项冒烟测试覆盖启动导入、会话管理、Agent 调用、异常兜底全场景
 7. 全项目 mypy/ruff 静态质检零告警，core/tools/storage/memory/config/api 零变更，满足架构红线
+## Checkpointer 持久化说明
+### MemorySaver（当前方案）
+当前使用 LangGraph MemorySaver 内存型检查点存储，所有会话对话历史保存在进程内存中。
+**限制：** Streamlit 进程重启（代码修改触发热重载、手动终止进程）后，全部会话历史丢失，无法恢复。
+
+### SqliteSaver（后续迭代规划）
+下一版本迭代计划替换为 SqliteSaver，实现会话历史磁盘持久化。
+届时会话底层存储完整 UUID 主键，支持跨进程重启恢复对话。

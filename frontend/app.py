@@ -14,6 +14,8 @@ from typing import Any
 
 import streamlit as st
 
+from frontend.agent_runner import run_agent_sync
+
 # === 页面配置 ===
 st.set_page_config(
     page_title="多工具智能助理 v0.8.0",
@@ -88,6 +90,8 @@ def _sync_tools_disabled() -> None:
         if key in st.session_state and not st.session_state[key]:
             disabled.append(name)
     st.session_state.tools_disabled = disabled
+    sm = _get_cached_session_manager()
+    sm.update_session(st.session_state.session_id, tools_disabled=disabled)
 
 
 # === 侧边栏 ===
@@ -125,7 +129,7 @@ with st.sidebar:
     # 会话列表
     sessions = sm.list_sessions()
     if len(sessions) > 1:
-        session_options = {s.session_id: f"{s.name} ({s.session_id})" for s in sessions}
+        session_options = {s.session_id: f"{s.name} ({s.display_id})" for s in sessions}
         selected_sid = st.selectbox(
             "切换会话",
             options=list(session_options.keys()),
@@ -200,11 +204,6 @@ with st.sidebar:
 
     if st.button("📊 一键生成周报", use_container_width=True):
         with st.spinner("正在生成周报..."):
-            from importlib import import_module, reload
-
-            mod = import_module("frontend.agent_runner")
-            reload(mod)
-            run_agent_sync = mod.run_agent_sync
 
             sid = st.session_state.session_id
             result = run_agent_sync(
@@ -303,11 +302,6 @@ if user_input:
 
     # 调用 Agent
     with st.spinner("思考中..."):
-        from importlib import import_module, reload
-
-        mod = import_module("frontend.agent_runner")
-        reload(mod)
-        run_agent_sync = mod.run_agent_sync
 
         sid = st.session_state.session_id
         result = run_agent_sync(

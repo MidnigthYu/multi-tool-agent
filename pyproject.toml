@@ -57,7 +57,11 @@ disallow_subclassing_any = false
 warn_unused_ignores = true
 exclude = ["tests/", ".venv/", "venv/"]
 [tool.coverage.run]
-source = ["core", "config", "storage", "memory"]
-omit = ["tests/*", "**/__init__.py"]
+source = ["core", "config", "storage", "memory", "tools", "frontend"]
+omit = [
+    "tests/*",
+    "**/__init__.py",
+    "frontend/app.py",   # Streamlit UI????????????????????????
+]
 [tool.coverage.report]
 fail_under = 80

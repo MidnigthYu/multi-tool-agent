@@ -5,10 +5,15 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+
+from config import Constants
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,6 +27,11 @@ class SessionState:
     short_term_max_messages: int = 5
     model_name: str = ""
 
+    @property
+    def display_id(self) -> str:
+        """First 12 hex digits of the full UUID for display."""
+        return self.session_id.replace("-", "")[:12]
+
 
 class SessionManager:
     """会话管理器：创建、查询、清理会话，维护多会话状态隔离。
@@ -34,6 +44,20 @@ class SessionManager:
 
     def __init__(self) -> None:
         self._sessions: dict[str, SessionState] = {}
+        self._cleanup_expired()
+
+    def _cleanup_expired(self) -> int:
+        expire_hours = Constants.SESSION_EXPIRE_HOURS
+        now = datetime.now(UTC)
+        expired = [
+            sid
+            for sid, s in self._sessions.items()
+            if (now - datetime.fromisoformat(s.created_at)).total_seconds() > expire_hours * 3600
+        ]
+        for sid in expired:
+            logger.info("Cleaning up expired session=%s", sid)
+            del self._sessions[sid]
+        return len(expired)
 
     def create_session(self, name: str = "") -> SessionState:
         """创建新会话，返回 SessionState。
@@ -44,7 +68,8 @@ class SessionManager:
         Returns:
             新创建的 SessionState。
         """
-        session_id = str(uuid.uuid4())[:8]
+        self._cleanup_expired()
+        session_id = str(uuid.uuid4())
         state = SessionState(
             session_id=session_id,
             created_at=datetime.now(UTC).isoformat(),
@@ -60,6 +85,15 @@ class SessionManager:
     def list_sessions(self) -> list[SessionState]:
         """返回全部会话列表（按创建时间排序）。"""
         return sorted(self._sessions.values(), key=lambda s: s.created_at)
+
+    def update_session(self, session_id: str, **kwargs: Any) -> None:
+        """???????????"""
+        if session_id not in self._sessions:
+            return
+        session = self._sessions[session_id]
+        for key, value in kwargs.items():
+            if hasattr(session, key):
+                setattr(session, key, value)
 
     def remove_session(self, session_id: str) -> bool:
         """删除会话及其关联状态。
