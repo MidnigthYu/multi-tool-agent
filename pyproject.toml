@@ -61,7 +61,7 @@ source = ["core", "config", "storage", "memory", "tools", "frontend"]
 omit = [
     "tests/*",
     "**/__init__.py",
-    "frontend/app.py",   # Streamlit UI????????????????????????
+    "frontend/app.py",   # Streamlit UI渲染层，依赖浏览器集成测试，不纳入单元覆盖率统计
 ]
 [tool.coverage.report]
 fail_under = 80

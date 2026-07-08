@@ -61,6 +61,7 @@ if "session_id" not in st.session_state:
     st.session_state.short_term_max_messages = 5
     st.session_state.max_reflection_rounds = 2
 
+
 # === 工具列表（从 ToolRegistry 动态获取） ===
 def _get_available_tools() -> list[dict[str, Any]]:
     """获取当前注册的全部工具元数据。"""
@@ -148,7 +149,7 @@ with st.sidebar:
     # 当前会话信息
     current_s = sm.get_session(st.session_state.session_id)
     if current_s:
-        st.caption(f"🆔 会话 ID: `{current_s.session_id}`")
+        st.caption(f"🆔 会话 ID: `{current_s.display_id}`")
         st.caption(f"🕐 创建时间: {current_s.created_at[:19]}")
 
     st.divider()
@@ -204,15 +205,12 @@ with st.sidebar:
 
     if st.button("📊 一键生成周报", use_container_width=True):
         with st.spinner("正在生成周报..."):
-
             sid = st.session_state.session_id
             result = run_agent_sync(
                 sid,
                 "请根据当前会话生成周报",
                 state_overrides={
-                    "tools_disabled": [
-                        t for t in st.session_state.tools_disabled if t != "weekly_report"
-                    ]
+                    "tools_disabled": [t for t in st.session_state.tools_disabled if t != "weekly_report"]
                 },
             )
             if not result["error"]:
@@ -302,7 +300,6 @@ if user_input:
 
     # 调用 Agent
     with st.spinner("思考中..."):
-
         sid = st.session_state.session_id
         result = run_agent_sync(
             sid,

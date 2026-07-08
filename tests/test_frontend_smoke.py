@@ -196,7 +196,6 @@ class TestSessionManager:
         mm = SessionManager.get_cached_memory_manager()
         assert isinstance(mm, MemoryManager)
 
-
     # === Phase 1 T08: new scenario tests ===
 
     def test_session_concurrent_isolation(self) -> None:
@@ -235,6 +234,7 @@ class TestSessionManager:
         count = sm._cleanup_expired()
         assert isinstance(count, int)
         assert count >= 0
+
 
 # ============================================================
 # Streamlit app 导入冒烟测试

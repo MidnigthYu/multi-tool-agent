@@ -95,9 +95,7 @@ def run_agent_sync(
         if state_overrides:
             state = dict(state)
             state.update(state_overrides)
-        result = asyncio.run(
-            agent.ainvoke(state, {"configurable": {"thread_id": session_id}})
-        )
+        result = asyncio.run(agent.ainvoke(state, {"configurable": {"thread_id": session_id}}))
         _console(f"Agent invoke finished, session={session_id}")
         return _extract_response(result)
 
